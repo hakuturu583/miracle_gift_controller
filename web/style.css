@@ -45,3 +45,14 @@ button { font: inherit; padding: .35rem .8rem; border-radius: 8px; border: 1px s
 #miclog .bad { color: var(--muted); }
 footer { text-align: center; font-size: .75rem; color: var(--muted); padding: 1rem; }
 footer a { color: inherit; }
+.scan-now { display: flex; align-items: center; gap: .6rem; margin: .5rem 0; font-family: ui-monospace, monospace; }
+.scan-now .swatch { width: 64px; }
+#scan-hit { width: 100%; font-size: 1.4rem; padding: .9rem; margin: .25rem 0 .5rem; border-color: var(--accent); }
+#scan-hit.done { background: var(--accent); color: #fff; }
+.scan-ctl { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .4rem 0; font-size: .85rem; }
+.scan-ctl input { width: 5ch; }
+.scan-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: .5rem; }
+.scan-table td { padding: .2rem .3rem; border-top: 1px solid #8883; vertical-align: middle; }
+.scan-table .swatch { width: 48px; }
+.scan-table input { width: 100%; font: inherit; }
+.scan-table button { padding: .1rem .5rem; }

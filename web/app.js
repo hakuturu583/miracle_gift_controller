@@ -62,7 +62,7 @@ async function play(code, button) {
     pcm = synthesize(code, c.sampleRate, s.amp, s.repeat, s.lead, s.gap, s.ramp);
   } catch (e) {
     $('#code-msg').textContent = String(e.message || e);
-    return;
+    return 0;
   }
   if (current) {
     current.src.onended = null;
@@ -83,6 +83,7 @@ async function play(code, button) {
     if (current === me) { current = null; $('#now').textContent = ''; }
   };
   $('#now').textContent = `送信中: ${code} × ${s.repeat} (${(pcm.length / c.sampleRate).toFixed(2)} s)`;
+  return pcm.length / c.sampleRate;
 }
 
 function swatch(colors, bpm) {
@@ -194,3 +195,98 @@ $('#mic').addEventListener('click', async () => {
   mic = { stream, node };
   $('#mic').textContent = '受信テスト停止';
 });
+
+// ---- sweep all 128 codes and record which ones light up --------------------------------------
+const SCAN_KEY = 'miragift-scan-v1';
+const scanCodes = [...table.all].sort((a, b) => a.id - b.id);
+const scan = {
+  idx: Math.min(127, Math.max(0, parseInt(localStorage.getItem(SCAN_KEY + '-idx'), 10) || 0)), // index into scanCodes of the code whose turn it is (target of "光った")
+  running: false,
+  token: 0,
+  hits: (() => { try { return JSON.parse(localStorage.getItem(SCAN_KEY)) || {}; } catch (_) { return {}; } })(), // code -> {id, note, t}
+};
+const saveScan = () => localStorage.setItem(SCAN_KEY, JSON.stringify(scan.hits));
+const scanWait = () => Math.max(0.2, parseFloat($('#scan-wait').value) || 1.5);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function renderScan() {
+  localStorage.setItem(SCAN_KEY + '-idx', String(scan.idx));
+  const k = scanCodes[scan.idx];
+  $('#scan-pos').textContent = `${scan.idx + 1} / ${scanCodes.length}`;
+  $('#scan-cur').textContent = `#${k.id} ${k.code}${k.strawberry ? ' 🍓' : ''}`;
+  const sw = $('#scan-sw'); sw.replaceChildren(...swatch(k.colors, k.bpm).childNodes); sw.classList.toggle('unknown', !k.colors.length);
+  $('#scan-hit').classList.toggle('done', !!scan.hits[k.code]);
+  $('#scan-start').textContent = scan.running ? '一時停止' : (scan.idx > 0 ? '再開' : '開始');
+  const rows = scanCodes.filter((x) => scan.hits[x.code]);
+  $('#scan-count').textContent = `光った: ${rows.length} 件`;
+  const tb = $('#scan-log');
+  tb.replaceChildren(...rows.map((x) => {
+    const tr = document.createElement('tr');
+    const h = scan.hits[x.code];
+    const cells = [`#${x.id}`, x.code + (x.strawberry ? ' 🍓' : '')];
+    for (const c of cells) { const td = document.createElement('td'); td.textContent = c; tr.append(td); }
+    const tdSw = document.createElement('td'); tdSw.append(swatch(x.colors, x.bpm)); tr.append(tdSw);
+    const tdNote = document.createElement('td');
+    const inp = document.createElement('input'); inp.value = h.note || ''; inp.placeholder = 'メモ（色・動きなど）';
+    inp.addEventListener('change', () => { h.note = inp.value; saveScan(); });
+    tdNote.append(inp); tr.append(tdNote);
+    const tdOps = document.createElement('td');
+    const re = document.createElement('button'); re.type = 'button'; re.textContent = '▶';
+    re.title = 'もう一度鳴らす'; re.addEventListener('click', () => play(x.code, null));
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = '×';
+    del.title = '記録を消す'; del.addEventListener('click', () => { delete scan.hits[x.code]; saveScan(); renderScan(); });
+    tdOps.append(re, del); tr.append(tdOps);
+    return tr;
+  }));
+}
+
+async function scanLoop() {
+  const my = ++scan.token;
+  scan.running = true; renderScan();
+  while (scan.running && my === scan.token) {
+    const k = scanCodes[scan.idx];
+    renderScan();
+    const dur = await play(k.code, null);
+    await sleep((dur + scanWait()) * 1000);
+    if (!scan.running || my !== scan.token) break;
+    if (scan.idx >= scanCodes.length - 1) { scan.running = false; $('#now').textContent = '全コード送信完了'; break; }
+    scan.idx++;
+  }
+  renderScan();
+}
+function scanStop() { scan.running = false; scan.token++; renderScan(); }
+function scanGo(i, sound = true) {
+  scanStop();
+  scan.idx = Math.max(0, Math.min(scanCodes.length - 1, i));
+  renderScan();
+  if (sound) play(scanCodes[scan.idx].code, null);
+}
+
+$('#scan-start').addEventListener('click', () => (scan.running ? scanStop() : scanLoop()));
+$('#scan-prev').addEventListener('click', () => scanGo(scan.idx - 1));
+$('#scan-next').addEventListener('click', () => scanGo(scan.idx + 1));
+$('#scan-again').addEventListener('click', () => play(scanCodes[scan.idx].code, null));
+$('#scan-hit').addEventListener('click', () => {
+  const k = scanCodes[scan.idx];
+  if (scan.hits[k.code]) delete scan.hits[k.code];
+  else scan.hits[k.code] = { id: k.id, note: '', t: new Date().toISOString() };
+  saveScan(); renderScan();
+});
+$('#scan-reset').addEventListener('click', () => {
+  if (!confirm('記録をすべて消して最初からにしますか？')) return;
+  scan.hits = {}; saveScan(); scanGo(0, false);
+});
+$('#scan-csv').addEventListener('click', () => {
+  const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = ['id,code,strawberry,lit,note'];
+  for (const x of scanCodes) {
+    const h = scan.hits[x.code];
+    lines.push([x.id, x.code, x.strawberry ? 1 : 0, h ? 1 : 0, esc(h?.note || '')].join(','));
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/csv' }));
+  a.download = 'miragift-scan.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+});
+renderScan();

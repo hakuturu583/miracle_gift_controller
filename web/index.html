@@ -66,6 +66,30 @@
       <div class="grid small" data-group="all"></div>
     </details>
   </section>
+
+  <section class="panel" id="scan">
+    <h2>全コード順番テスト</h2>
+    <p class="note">#0〜#127 を順番に鳴らします。ライトが光ったら「光った！」を押すと、いま鳴らしているコードを記録します（もう一度押すと取り消し）。記録はこのブラウザに保存されます。</p>
+    <div class="scan-now">
+      <span id="scan-pos"></span>
+      <span class="swatch" id="scan-sw"></span>
+      <strong id="scan-cur"></strong>
+    </div>
+    <button type="button" id="scan-hit">光った！</button>
+    <div class="scan-ctl">
+      <button type="button" id="scan-start">開始</button>
+      <button type="button" id="scan-prev">◀ 前</button>
+      <button type="button" id="scan-again">もう一度</button>
+      <button type="button" id="scan-next">次 ▶</button>
+      <label>待ち時間 (秒) <input type="number" id="scan-wait" min="0.2" max="10" step="0.1" value="1.5"></label>
+    </div>
+    <div class="scan-ctl">
+      <span id="scan-count"></span>
+      <button type="button" id="scan-csv">CSV保存</button>
+      <button type="button" id="scan-reset">記録をリセット</button>
+    </div>
+    <table class="scan-table"><tbody id="scan-log"></tbody></table>
+  </section>
 </main>
 
 <footer>
