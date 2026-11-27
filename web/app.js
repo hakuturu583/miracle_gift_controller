@@ -15,9 +15,11 @@ let ctx = null;
 let keepAliveNode = null;
 let current = null; // { src, button }
 
+window.__miragiftStage = 'WASM 初期化 (init)';
 await init();
+window.__miragiftStage = 'コード表の読み込み';
 const table = JSON.parse(commands_json());
-clearTimeout(window.__miragiftBoot);
+window.__miragiftStage = 'ボタン生成';
 
 function settings() {
   return {
@@ -196,3 +198,6 @@ $('#mic').addEventListener('click', async () => {
   mic = { stream, node };
   $('#mic').textContent = '受信テスト停止';
 });
+
+clearTimeout(window.__miragiftBoot);
+window.__miragiftStage = '起動完了';

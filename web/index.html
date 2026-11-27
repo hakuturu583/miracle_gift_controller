@@ -80,9 +80,16 @@
     }
     window.addEventListener('error', function (e) { show((e.message || e.error) + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')); });
     window.addEventListener('unhandledrejection', function (e) { var r = e.reason; show(r && (r.stack || r.message) || String(r)); });
-    window.__miragiftBoot = setTimeout(function () { show('app.js が読み込まれていません (' + navigator.userAgent + ')'); }, 8000);
+    window.__miragiftStage = 'import app.js';
+    window.__miragiftShow = show;
+    window.__miragiftBoot = setTimeout(function () {
+      show('起動が「' + window.__miragiftStage + '」で止まっています / WebAssembly=' + (typeof WebAssembly) + ' / ' + navigator.userAgent);
+    }, 8000);
+    import('./app.js').catch(function (e) {
+      clearTimeout(window.__miragiftBoot);
+      show('「' + window.__miragiftStage + '」で失敗: ' + (e && (e.message || e)) + ' / WebAssembly=' + (typeof WebAssembly));
+    });
   })();
 </script>
-<script type="module" src="app.js"></script>
 </body>
 </html>
