@@ -1,6 +1,6 @@
 //! miragift CLI
 //!
-//!   miragift gen <code|name> [-o out.wav] [--sr 48000] [--amp 0.5] [--repeat 2] [--gap 0.3] [--lead 0.15] [--ramp-ms 6]
+//!   miragift gen <code|name> [-o out.wav] [--sr 48000] [--amp 0.5] [--repeat 2] [--gap 0.3] [--lead 0.15] [--ramp-ms 20] [--keyed]
 //!   miragift list
 //!   miragift decode <in.wav> [--channel N] [--segments]
 //!   miragift scan <in.wav> [--channel N] [--min-hz 15000] [--max-hz 22000] [--thr-db 20] [--from S] [--to S]
@@ -17,7 +17,7 @@ use std::process::exit;
 
 fn usage() -> ! {
     eprintln!(
-        "usage:\n  miragift gen <code|name> [-o out.wav] [--sr 48000] [--amp 0.5] [--repeat 2] [--gap 0.3] [--lead 0.15] [--ramp-ms 6]\n  miragift list\n  miragift decode <in.wav> [--channel N] [--segments]\n  miragift scan <in.wav> [--channel N] [--min-hz 15000] [--max-hz 22000] [--thr-db 20] [--from S] [--to S]"
+        "usage:\n  miragift gen <code|name> [-o out.wav] [--sr 48000] [--amp 0.5] [--repeat 2] [--gap 0.3] [--lead 0.15] [--ramp-ms 20] [--keyed]\n  miragift list\n  miragift decode <in.wav> [--channel N] [--segments]\n  miragift scan <in.wav> [--channel N] [--min-hz 15000] [--max-hz 22000] [--thr-db 20] [--from S] [--to S]"
     );
     exit(2)
 }
@@ -32,8 +32,8 @@ fn parse_args() -> Args {
     let mut a = Args { pos: vec![], opts: BTreeMap::new(), flags: vec![] };
     let mut it = std::env::args().skip(1).peekable();
     while let Some(s) = it.next() {
-        if s == "--segments" {
-            a.flags.push(s);
+        if let Some(f) = s.strip_prefix("--").filter(|f| ["segments", "keyed"].contains(f)) {
+            a.flags.push(f.to_string());
         } else if let Some(k) = s.strip_prefix("--").or_else(|| s.strip_prefix('-').filter(|k| k.len() == 1)) {
             let v = it.next().unwrap_or_else(|| usage());
             a.opts.insert(k.to_string(), v);
@@ -154,6 +154,7 @@ fn main() {
                 gap_sec: a.get("gap", d.gap_sec),
                 lead_in_sec: a.get("lead", d.lead_in_sec),
                 ramp_sec: a.get::<f64>("ramp-ms", d.ramp_sec * 1e3) / 1e3,
+                continuous: !a.flag("keyed"),
                 ..d
             };
             let out = a.opts.get("o").cloned().unwrap_or_else(|| format!("{cmd}.wav"));
@@ -171,7 +172,7 @@ fn main() {
             let channel = a.opts.get("channel").map(|c| c.parse().unwrap_or_else(|_| usage()));
             let sr = wav_rate(path);
             let mut dec = Decoder::new(DecoderConfig { sample_rate: sr, ..Default::default() });
-            let show_seg = a.flag("--segments");
+            let show_seg = a.flag("segments");
             let mut n = 0;
             let mut print = |e: Event| match e {
                 Event::Segment(s) if show_seg => println!(

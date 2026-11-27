@@ -27,7 +27,8 @@ function settings() {
     repeat: Math.max(1, Math.min(5, parseInt($('#repeat').value, 10) || 1)),
     lead: Math.max(0, parseFloat($('#lead').value) || 0),
     gap: Math.max(0.05, parseFloat($('#gap').value) || 0.3),
-    ramp: Math.max(1, Math.min(30, parseFloat($('#ramp').value) || 6)) / 1000,
+    ramp: Math.max(1, Math.min(50, parseFloat($('#ramp').value) || 20)) / 1000,
+    continuous: $('#continuous').checked,
   };
 }
 
@@ -63,7 +64,7 @@ async function play(code, button) {
   const s = settings();
   let pcm;
   try {
-    pcm = synthesize(code, c.sampleRate, s.amp, s.repeat, s.lead, s.gap, s.ramp);
+    pcm = synthesize(code, c.sampleRate, s.amp, s.repeat, s.lead, s.gap, s.ramp, s.continuous);
   } catch (e) {
     $('#code-msg').textContent = String(e.message || e);
     return;
@@ -136,7 +137,7 @@ $('#dl').addEventListener('click', () => {
   try {
     const code = normalize($('#code').value);
     const s = settings();
-    const wav = synthesize_wav(code, 48000, s.amp, s.repeat, s.lead, s.gap, s.ramp);
+    const wav = synthesize_wav(code, 48000, s.amp, s.repeat, s.lead, s.gap, s.ramp, s.continuous);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
     a.download = `miragift-${code}.wav`;
