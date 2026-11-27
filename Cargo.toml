@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["crates/miragift-core", "crates/miragift-wasm", "crates/miragift-cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "ISC"
+
+[profile.release]
+opt-level = 3
+lto = true

@@ -1,0 +1,8 @@
+[package]
+name = "miragift-core"
+description = "Miracle Gift Parade penlight (ミラギフ棒) acoustic protocol: clean synthesizer + streaming decoder"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

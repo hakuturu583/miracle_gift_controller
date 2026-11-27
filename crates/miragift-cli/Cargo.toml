@@ -1,0 +1,15 @@
+[package]
+name = "miragift-cli"
+description = "Generate / analyse Miracle Gift Parade penlight control audio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "miragift"
+path = "src/main.rs"
+
+[dependencies]
+miragift-core = { path = "../miragift-core" }
+hound = "3.5"
+rustfft = "6"
