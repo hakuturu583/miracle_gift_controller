@@ -102,11 +102,6 @@ function button(code, name, colors, bpm, extra = '') {
   b.className = 'cmd';
   b.type = 'button';
   const sw = swatch(colors, bpm);
-  if (colors.length > 1) {
-    b.classList.add('blink');
-    // bpm hint from the reference table: one colour step per beat
-    b.style.setProperty('--period', `${Math.max(0.3, 60 / Math.max(bpm, 1)) * 2}s`);
-  }
   const n = document.createElement('span'); n.className = 'name'; n.textContent = name + extra;
   const cd = document.createElement('span'); cd.className = 'code'; cd.textContent = code;
   b.append(sw, n, cd);

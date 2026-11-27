@@ -30,8 +30,6 @@ h2 { font-size: 1rem; margin: .75rem 0 .5rem; }
 .swatch { display: flex; height: 18px; width: 100%; border-radius: 9px; overflow: hidden; }
 .swatch span { flex: 1; }
 .swatch.unknown { background: repeating-linear-gradient(45deg, #8884, #8884 4px, transparent 4px, transparent 8px); }
-.blink .swatch span { animation: blink var(--period, 1s) steps(1) infinite; }
-@keyframes blink { 50% { filter: brightness(.35); } }
 #status { font-size: .9rem; }
 #now { font-size: .8rem; color: var(--muted); min-height: 1.2em; }
 form { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
