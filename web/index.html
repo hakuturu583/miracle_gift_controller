@@ -48,8 +48,7 @@
       <label>送信回数 <input type="number" id="repeat" min="1" max="5" value="2"></label>
       <label>先頭の無音 (秒) <input type="number" id="lead" min="0" max="1" step="0.05" value="0.15"></label>
       <label>パケット間隔 (秒) <input type="number" id="gap" min="0.05" max="2" step="0.05" value="0.3"></label>
-      <label>フェード (ms) <input type="number" id="ramp" min="1" max="50" step="1" value="20"></label>
-      <label class="chk"><input type="checkbox" id="continuous" checked> 無音区間なし（音量一定・連続位相）: ピピピ音を抑える。反応しなければ外す</label>
+      <label>フェード (ms) <input type="number" id="ramp" min="1" max="30" step="1" value="6"></label>
       <label class="chk"><input type="checkbox" id="keepalive" checked> 出力デバイスを起こしたままにする（先頭欠け防止）</label>
     </div>
   </section>
@@ -72,25 +71,6 @@
 <footer>
   プロトコルとコード表は <a href="https://github.com/ohtake/miracle-light-controller">ohtake/miracle-light-controller</a> (ISC) を参考にしています。
 </footer>
-<script>
-  // Surface errors on the page itself: phones have no visible console.
-  (function () {
-    function show(msg) {
-      var el = document.getElementById('status');
-      if (el) { el.textContent = 'エラー: ' + msg; el.style.color = '#e55'; }
-    }
-    window.addEventListener('error', function (e) { show((e.message || e.error) + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')); });
-    window.addEventListener('unhandledrejection', function (e) { var r = e.reason; show(r && (r.stack || r.message) || String(r)); });
-    window.__miragiftStage = 'import app.js';
-    window.__miragiftShow = show;
-    window.__miragiftBoot = setTimeout(function () {
-      show('起動が「' + window.__miragiftStage + '」で止まっています / WebAssembly=' + (typeof WebAssembly) + ' / ' + navigator.userAgent);
-    }, 8000);
-    import('./app.js').catch(function (e) {
-      clearTimeout(window.__miragiftBoot);
-      show('「' + window.__miragiftStage + '」で失敗: ' + (e && (e.message || e)) + ' / WebAssembly=' + (typeof WebAssembly));
-    });
-  })();
-</script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

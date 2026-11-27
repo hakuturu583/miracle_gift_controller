@@ -9,8 +9,8 @@ fn parse(code: &str) -> Result<Command, JsError> {
     code.parse::<Command>().map_err(|e| JsError::new(&e.to_string()))
 }
 
-fn cfg(sample_rate: u32, amplitude: f32, repeat: u32, lead_in_sec: f64, gap_sec: f64, ramp_sec: f64, continuous: bool) -> SynthConfig {
-    SynthConfig { sample_rate, amplitude, repeat, lead_in_sec, gap_sec, ramp_sec, continuous, ..Default::default() }
+fn cfg(sample_rate: u32, amplitude: f32, repeat: u32, lead_in_sec: f64, gap_sec: f64, ramp_sec: f64) -> SynthConfig {
+    SynthConfig { sample_rate, amplitude, repeat, lead_in_sec, gap_sec, ramp_sec, ..Default::default() }
 }
 
 /// Render a command (e.g. "3234321") to mono f32 PCM at `sample_rate`.
@@ -23,10 +23,9 @@ pub fn synthesize(
     lead_in_sec: f64,
     gap_sec: f64,
     ramp_sec: f64,
-    continuous: bool,
 ) -> Result<Vec<f32>, JsError> {
     let cmd = parse(code)?;
-    Ok(synth::synthesize(cmd, &cfg(sample_rate, amplitude, repeat, lead_in_sec, gap_sec, ramp_sec, continuous)))
+    Ok(synth::synthesize(cmd, &cfg(sample_rate, amplitude, repeat, lead_in_sec, gap_sec, ramp_sec)))
 }
 
 /// Render a command to a 16-bit mono WAV file.
@@ -39,10 +38,9 @@ pub fn synthesize_wav(
     lead_in_sec: f64,
     gap_sec: f64,
     ramp_sec: f64,
-    continuous: bool,
 ) -> Result<Vec<u8>, JsError> {
     let cmd = parse(code)?;
-    let pcm = synth::synthesize(cmd, &cfg(sample_rate, amplitude, repeat, lead_in_sec, gap_sec, ramp_sec, continuous));
+    let pcm = synth::synthesize(cmd, &cfg(sample_rate, amplitude, repeat, lead_in_sec, gap_sec, ramp_sec));
     Ok(synth::to_wav_i16(&pcm, sample_rate))
 }
 

@@ -15,11 +15,8 @@ let ctx = null;
 let keepAliveNode = null;
 let current = null; // { src, button }
 
-window.__miragiftStage = 'WASM 初期化 (init)';
 await init();
-window.__miragiftStage = 'コード表の読み込み';
 const table = JSON.parse(commands_json());
-window.__miragiftStage = 'ボタン生成';
 
 function settings() {
   return {
@@ -27,16 +24,14 @@ function settings() {
     repeat: Math.max(1, Math.min(5, parseInt($('#repeat').value, 10) || 1)),
     lead: Math.max(0, parseFloat($('#lead').value) || 0),
     gap: Math.max(0.05, parseFloat($('#gap').value) || 0.3),
-    ramp: Math.max(1, Math.min(50, parseFloat($('#ramp').value) || 20)) / 1000,
-    continuous: $('#continuous').checked,
+    ramp: Math.max(1, Math.min(30, parseFloat($('#ramp').value) || 6)) / 1000,
   };
 }
 
 async function audio() {
   if (!ctx) {
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
-    const AC = window.AudioContext || window.webkitAudioContext;
-    ctx = new AC({ latencyHint: 'playback' });
+    ctx = new AudioContext({ latencyHint: 'playback' });
     $('#status').textContent = `オーディオ有効 (sampleRate ${ctx.sampleRate} Hz, 出力レイテンシ ${((ctx.outputLatency || ctx.baseLatency || 0) * 1000).toFixed(0)} ms)`;
   }
   if (ctx.state !== 'running') await ctx.resume();
@@ -64,7 +59,7 @@ async function play(code, button) {
   const s = settings();
   let pcm;
   try {
-    pcm = synthesize(code, c.sampleRate, s.amp, s.repeat, s.lead, s.gap, s.ramp, s.continuous);
+    pcm = synthesize(code, c.sampleRate, s.amp, s.repeat, s.lead, s.gap, s.ramp);
   } catch (e) {
     $('#code-msg').textContent = String(e.message || e);
     return;
@@ -110,7 +105,7 @@ function button(code, name, colors, bpm, extra = '') {
   const n = document.createElement('span'); n.className = 'name'; n.textContent = name + extra;
   const cd = document.createElement('span'); cd.className = 'code'; cd.textContent = code;
   b.append(sw, n, cd);
-  b.addEventListener('click', () => { $('#status').textContent = 'タップ受付: ' + code; play(code, b); });
+  b.addEventListener('click', () => play(code, b));
   return b;
 }
 
@@ -137,7 +132,7 @@ $('#dl').addEventListener('click', () => {
   try {
     const code = normalize($('#code').value);
     const s = settings();
-    const wav = synthesize_wav(code, 48000, s.amp, s.repeat, s.lead, s.gap, s.ramp, s.continuous);
+    const wav = synthesize_wav(code, 48000, s.amp, s.repeat, s.lead, s.gap, s.ramp);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
     a.download = `miragift-${code}.wav`;
@@ -199,6 +194,3 @@ $('#mic').addEventListener('click', async () => {
   mic = { stream, node };
   $('#mic').textContent = '受信テスト停止';
 });
-
-clearTimeout(window.__miragiftBoot);
-window.__miragiftStage = '起動完了';

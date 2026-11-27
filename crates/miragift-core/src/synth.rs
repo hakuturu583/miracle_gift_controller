@@ -31,14 +31,6 @@ pub struct SynthConfig {
     pub lead_in_sec: f64,
     /// Trailing silence (s), so the last tone's fade is never cut by the device stopping.
     pub tail_sec: f64,
-    /// Continuous-phase FSK: keep the level constant through the whole packet and only glide the
-    /// frequency at slot boundaries (no 10 ms gaps between tones). The keyed (gapped) signal has a
-    /// 10 Hz on/off envelope that small speakers (phones) demodulate into an audible "pi-pi-pi";
-    /// with a constant envelope the only level changes are the packet's own fade in/out.
-    /// Adjacent symbols always use different tones, so slot boundaries stay unambiguous.
-    pub continuous: bool,
-    /// Frequency glide time at each symbol boundary in continuous mode (s).
-    pub glide_sec: f64,
 }
 
 impl Default for SynthConfig {
@@ -46,13 +38,11 @@ impl Default for SynthConfig {
         SynthConfig {
             sample_rate: 48_000,
             amplitude: 0.5,
-            ramp_sec: 0.020,
+            ramp_sec: 0.006,
             repeat: 2,
             gap_sec: 0.30,
             lead_in_sec: 0.15,
             tail_sec: 0.10,
-            continuous: true,
-            glide_sec: 0.003,
         }
     }
 }
@@ -80,64 +70,11 @@ pub fn synthesize(cmd: Command, cfg: &SynthConfig) -> Vec<f32> {
     let sched = packet_schedule(cmd);
     for r in 0..repeat {
         let base = cfg.lead_in_sec + (packet_len + cfg.gap_sec) * r as f64;
-        if cfg.continuous {
-            render_continuous(&mut out, sr, base, cmd, cfg);
-        } else {
-            for &(start, dur, tone) in &sched {
-                render_tone(&mut out, sr, base + start, dur, TONES_HZ[tone], cfg);
-            }
+        for &(start, dur, tone) in &sched {
+            render_tone(&mut out, sr, base + start, dur, TONES_HZ[tone], cfg);
         }
     }
     out
-}
-
-/// Constant-envelope, phase-continuous rendering of one packet starting at `base` s.
-///
-/// Tone k nominally occupies [FIRST_SLOT + k*SLOT, +SYMBOL); the 10 ms gaps are absorbed by moving
-/// each switch to the middle of the gap, so every slot centre (where decoders sample) carries the
-/// same tone as the keyed signal. The packet still starts at 0 and ends at PACKET_SEC.
-fn render_continuous(out: &mut [f32], sr: f64, base: f64, cmd: Command, cfg: &SynthConfig) {
-    let tones = cmd.tones();
-    let gap = SLOT_SEC - SYMBOL_SEC;
-    // switch k: from segment k (0 = preamble) to segment k+1
-    let switches: Vec<f64> = (0..SYMBOLS)
-        .map(|k| FIRST_SLOT_SEC + SLOT_SEC * k as f64 - gap / 2.0)
-        .collect();
-    let freq_of = |seg: usize| if seg == 0 { TONES_HZ[0] } else { TONES_HZ[tones[seg - 1]] };
-    let n0 = (base * sr).round() as usize;
-    let len = (crate::PACKET_SEC * sr).round() as usize;
-    let ramp = ((cfg.ramp_sec * sr).round() as usize).clamp(1, len / 2);
-    let glide = cfg.glide_sec.max(0.0);
-    let amp = cfg.amplitude.clamp(0.0, 1.0) as f64;
-    let mut phase = 0.0f64;
-    for n in 0..len {
-        let t = n as f64 / sr;
-        // instantaneous frequency: base segment + raised-cosine glides at each switch
-        let mut f = freq_of(0);
-        for (k, &ts) in switches.iter().enumerate() {
-            let step = freq_of(k + 1) - freq_of(k);
-            let x = if glide <= 0.0 {
-                if t >= ts { 1.0 } else { 0.0 }
-            } else {
-                let u = ((t - ts) / glide + 0.5).clamp(0.0, 1.0);
-                0.5 - 0.5 * (std::f64::consts::PI * u).cos()
-            };
-            f += step * x;
-        }
-        let env = if n < ramp {
-            0.5 - 0.5 * (std::f64::consts::PI * (n as f64 + 0.5) / ramp as f64).cos()
-        } else if n >= len - ramp {
-            let k = len - n;
-            0.5 - 0.5 * (std::f64::consts::PI * (k as f64 - 0.5) / ramp as f64).cos()
-        } else {
-            1.0
-        };
-        if let Some(s) = out.get_mut(n0 + n) {
-            *s += (amp * env * phase.sin()) as f32;
-        }
-        phase += std::f64::consts::TAU * f / sr;
-        if phase > std::f64::consts::TAU { phase -= std::f64::consts::TAU; }
-    }
 }
 
 fn render_tone(out: &mut [f32], sr: f64, start: f64, dur: f64, freq: f64, cfg: &SynthConfig) {
@@ -210,30 +147,9 @@ mod tests {
     }
 
     #[test]
-    fn continuous_envelope_is_flat_inside_packet() {
-        let cfg = SynthConfig { repeat: 1, lead_in_sec: 0.0, ..Default::default() };
-        let pcm = synthesize("3234321".parse().unwrap(), &cfg);
-        let sr = cfg.sample_rate as f64;
-        // peak in every 1 ms window between the fades stays at full amplitude (no gaps)
-        let w = (sr / 1000.0) as usize;
-        let a = ((cfg.ramp_sec + 0.002) * sr) as usize;
-        let b = ((crate::PACKET_SEC - cfg.ramp_sec - 0.002) * sr) as usize;
-        for c in pcm[a..b].chunks(w) {
-            let pk = c.iter().fold(0.0f32, |m, s| m.max(s.abs()));
-            assert!(pk > cfg.amplitude * 0.97, "dip to {pk}");
-        }
-    }
-
-    #[test]
     fn little_out_of_band_energy() {
-        for continuous in [true, false] {
-            little_out_of_band_energy_with(continuous);
-        }
-    }
-
-    fn little_out_of_band_energy_with(continuous: bool) {
         // Energy below 17 kHz (audible "click" region) must be tiny compared with the in-band energy.
-        let cfg = SynthConfig { repeat: 1, continuous, ramp_sec: 0.006, ..Default::default() };
+        let cfg = SynthConfig { repeat: 1, ..Default::default() };
         let pcm = synthesize("1212121".parse().unwrap(), &cfg);
         let sr = cfg.sample_rate as f64;
         let power = |f: f64| crate::decoder::goertzel_power(&pcm, f / sr);
@@ -244,6 +160,6 @@ mod tests {
             worst = worst.max(power(f));
             f += 50.0;
         }
-        assert!(worst < inband * 1e-6, "continuous={continuous} worst={worst:e} inband={inband:e}");
+        assert!(worst < inband * 1e-6, "worst={worst:e} inband={inband:e}");
     }
 }
