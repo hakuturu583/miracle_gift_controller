@@ -71,6 +71,18 @@
 <footer>
   プロトコルとコード表は <a href="https://github.com/ohtake/miracle-light-controller">ohtake/miracle-light-controller</a> (ISC) を参考にしています。
 </footer>
+<script>
+  // Surface errors on the page itself: phones have no visible console.
+  (function () {
+    function show(msg) {
+      var el = document.getElementById('status');
+      if (el) { el.textContent = 'エラー: ' + msg; el.style.color = '#e55'; }
+    }
+    window.addEventListener('error', function (e) { show((e.message || e.error) + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')); });
+    window.addEventListener('unhandledrejection', function (e) { var r = e.reason; show(r && (r.stack || r.message) || String(r)); });
+    window.__miragiftBoot = setTimeout(function () { show('app.js が読み込まれていません (' + navigator.userAgent + ')'); }, 8000);
+  })();
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

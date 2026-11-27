@@ -17,6 +17,7 @@ let current = null; // { src, button }
 
 await init();
 const table = JSON.parse(commands_json());
+clearTimeout(window.__miragiftBoot);
 
 function settings() {
   return {
@@ -31,7 +32,8 @@ function settings() {
 async function audio() {
   if (!ctx) {
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
-    ctx = new AudioContext({ latencyHint: 'playback' });
+    const AC = window.AudioContext || window.webkitAudioContext;
+    ctx = new AC({ latencyHint: 'playback' });
     $('#status').textContent = `オーディオ有効 (sampleRate ${ctx.sampleRate} Hz, 出力レイテンシ ${((ctx.outputLatency || ctx.baseLatency || 0) * 1000).toFixed(0)} ms)`;
   }
   if (ctx.state !== 'running') await ctx.resume();
@@ -105,7 +107,7 @@ function button(code, name, colors, bpm, extra = '') {
   const n = document.createElement('span'); n.className = 'name'; n.textContent = name + extra;
   const cd = document.createElement('span'); cd.className = 'code'; cd.textContent = code;
   b.append(sw, n, cd);
-  b.addEventListener('click', () => play(code, b));
+  b.addEventListener('click', () => { $('#status').textContent = 'タップ受付: ' + code; play(code, b); });
   return b;
 }
 
